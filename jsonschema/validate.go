@@ -3,6 +3,7 @@ package jsonschema
 import (
 	"encoding/json"
 	"errors"
+	"unicode/utf8"
 )
 
 func CollectDefs(def Definition) map[string]Definition {
@@ -57,6 +58,9 @@ func Validate(schema Definition, data any, opts ...ValidateOption) bool {
 	if len(opts) == 0 {
 		args.Defs = CollectDefs(schema)
 	}
+	if v, ok := data.(string); ok && schema.MaxLength != nil && utf8.RuneCountInString(v) > *schema.MaxLength {
+		return false
+	}
 	// anyOf is satisfied when the data matches at least one of the subschemas.
 	if len(schema.AnyOf) > 0 {
 		return validateAnyOf(schema.AnyOf, data, args.Defs)
@@ -96,7 +100,8 @@ func Validate(schema Definition, data any, opts ...ValidateOption) bool {
 				return Validate(v, data, WithDefs(args.Defs))
 			}
 		}
-		return false
+		// A maxLength constraint without a type applies only to strings.
+		return schema.Type == "" && schema.Ref == "" && schema.MaxLength != nil
 	}
 }
 
