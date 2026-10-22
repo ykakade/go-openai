@@ -58,7 +58,7 @@ func Validate(schema Definition, data any, opts ...ValidateOption) bool {
 	if len(opts) == 0 {
 		args.Defs = CollectDefs(schema)
 	}
-	if v, ok := data.(string); ok && schema.MaxLength != nil && utf8.RuneCountInString(v) > *schema.MaxLength {
+	if !validateMaxLength(schema.MaxLength, data) {
 		return false
 	}
 	// anyOf is satisfied when the data matches at least one of the subschemas.
@@ -103,6 +103,11 @@ func Validate(schema Definition, data any, opts ...ValidateOption) bool {
 		// A maxLength constraint without a type applies only to strings.
 		return schema.Type == "" && schema.Ref == "" && schema.MaxLength != nil
 	}
+}
+
+func validateMaxLength(maxLength *int, data any) bool {
+	value, ok := data.(string)
+	return !ok || maxLength == nil || utf8.RuneCountInString(value) <= *maxLength
 }
 
 func validateAnyOf(subschemas []Definition, data any, defs map[string]Definition) bool {
